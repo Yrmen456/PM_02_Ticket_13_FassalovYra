@@ -1,7 +1,7 @@
 ﻿
 namespace PM_02_Ticket_13_FassalovYra
 {
-    partial class Form1
+    partial class Main
     {
         /// <summary>
         /// Обязательная переменная конструктора.

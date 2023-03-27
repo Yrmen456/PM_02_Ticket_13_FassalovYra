@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -12,14 +14,16 @@ using Word = Microsoft.Office.Interop.Word;
 
 namespace PM_02_Ticket_13_FassalovYra
 {
-    public partial class Form1 : Form
+    public partial class Main : Form
     {
-        public Form1()
+        public Main()
         {
             InitializeComponent();
+            System.IO.Directory.CreateDirectory("Cheque");
             AddPerformance();
             AddTicketType();
             AddDiscount();
+        
         }
         List<Performance> Performance = new List<Performance>();
         async void AddPerformance()
@@ -112,11 +116,11 @@ namespace PM_02_Ticket_13_FassalovYra
 
         private void buttonCalculation_Click(object sender, EventArgs e)
         {
-            DataVerification();
+            DataVerification(false);
         }
 
         //Метод Проверки
-        void DataVerification()
+        void DataVerification(bool Print)
         {
             Performance ThisPerformance = new Performance();
             Discount ThisDiscount = new Discount();
@@ -148,6 +152,10 @@ namespace PM_02_Ticket_13_FassalovYra
             }
             decimal Result = CalculationPrice(ThisPerformance, ThisTicketTypes, ThisDiscount, Quantity);
             labelInformation.Text = $"Стоимость: {Result} руб.";
+            if (Print)
+            {
+                PrintWord(ThisPerformance, ThisTicketTypes, ThisDiscount, Result);
+            }
         }
 
         //Метод Расчета Стоимости
@@ -158,83 +166,72 @@ namespace PM_02_Ticket_13_FassalovYra
         }
         string startupPath = Environment.CurrentDirectory;
         //Метод Вывода в Word
-        bool PrintWord()
+        bool PrintWord(Performance ThisPerformancePrice, TicketType ThisIncreasePrice, Discount ThisDiscountPrice, decimal Price)
         {
-
-            if (saveFileDialog1.ShowDialog() == DialogResult.Cancel)
-                return false;
-            labelViews.Text = "tr1";
-            // получаем выбранный файл
-            string filename = saveFileDialog1.FileName;
             Word.Document doc = null;
             try
             {
-                labelViews.Text = "tr2";
                 Word.Application app = new Word.Application();
-                // Открываем
-                //doc = app.Documents.Open(Properties.Resources.ResourceManager.GetObject("Pattern.docx"));
-                doc = app.Documents.Open(Properties.Resources.ResourceManager.GetObject("Pattern.docx"));
+                string source = startupPath + @"\Resources\Pattern.docx";
+                doc = app.Documents.Open(source);
                 doc.Activate();
-                // Делаем копию 
-                doc.SaveAs2(startupPath +@"ChequeCopy.docx");
+                doc.SaveAs2(startupPath + @"\Resources\PatternCopy.docx");
                 doc.Close();
                 doc = null;
-            
             }
             catch
             {
-                labelViews.Text = "F1";
                 doc = null;
                 return false;
-                      
             }
             try
             {
-                labelViews.Text = "tr3";
                 Word.Application app = new Word.Application();
                 // Путь до шаблона документа
-                string source = startupPath + @"\ChequeCopy.docx";
+                string source = startupPath + @"\Resources\PatternCopy.docx";
                 // Открываем
                 doc = app.Documents.Open(source);
                 doc.Activate();
                 Word.Bookmarks wBookmarks = doc.Bookmarks;
                 Word.Range wRange;
                 int i = 0;
-                string[] data = new string[4] { "","","","" };
-                foreach (Word.Bookmark mark in wBookmarks)
-                {
-
-                    wRange = mark.Range;
-                    wRange.Text = data[i];
-                    var d = wRange.InlineShapes;
-                    i++;
-                    if (i >= data.Length)
-                    {
-                        break;
-                    }
-                }
                 Random random = new Random();
-                string Name = DateTime.Now.ToString("dd.MM.yyyy.HH.mm.ss" + random.Next(1, 10000));
-                doc.SaveAs2( $@"{filename}.docx");
+                string Number = random.Next(1,999999).ToString();
+                string Date = DateTime.Now.ToString("dd.MM.yyyy_HH.mm.ss");
+                doc.Bookmarks.get_Item("Numer").Range.Text = Number;
+                doc.Bookmarks.get_Item("Date").Range.Text = Date;
+                doc.Bookmarks.get_Item("Product").Range.Text = ThisPerformancePrice.Name;
+                doc.Bookmarks.get_Item("Price").Range.Text = $"{Price} руб.";
+                doc.SaveAs2(startupPath + $@"\Cheque\Cheque_{Number}_{Date}_{Price}_руб.docx");
+                
                 doc.Close();
                 doc = null;
-                return true;
+                try
+                {
+                    System.Diagnostics.Process.Start(startupPath + $@"\Cheque\Cheque_{Number}_{Date}_{Price}_руб.docx");
+                }
+                catch (Exception)
+                {
+
+                    throw;
+                }
+
             }
             catch (Exception ex)
             {
-                labelViews.Text = "F2";
+
                 doc.Close();
                 doc = null;
                 MessageBox.Show("Во время выполнения произошла ошибка! \n" + ex);
                 Console.ReadLine();
-                return false;
             }
             return true;
         }
-
+       
         private void buttonIssue_Click(object sender, EventArgs e)
         {
-
+            DataVerification(true);
+     
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -245,8 +242,7 @@ namespace PM_02_Ticket_13_FassalovYra
         private void buttonOpenImg_Click(object sender, EventArgs e)
         {
             pictureBoxImg.Image = Properties.Resources.Teatr;
-            return;
-            PrintWord();
+     
         }
     }
 
